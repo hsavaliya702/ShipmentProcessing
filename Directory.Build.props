@@ -1,0 +1,37 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+    <Authors>ShipmentProcessing Team</Authors>
+    <Company>ShipmentProcessing</Company>
+    <Copyright>Copyright © 2026</Copyright>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <Optimize>true</Optimize>
+    <DebugType>portable</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <Optimize>false</Optimize>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <!-- Common Package Versions -->
+  <PropertyGroup>
+    <AWSSDKVersion>3.7.0</AWSSDKVersion>
+    <AWSLambdaVersion>2.2.0</AWSLambdaVersion>
+    <MicrosoftExtensionsVersion>8.0.10</MicrosoftExtensionsVersion>
+    <SerilogVersion>3.1.1</SerilogVersion>
+    <PollyVersion>8.2.1</PollyVersion>
+    <XUnitVersion>2.6.6</XUnitVersion>
+    <MoqVersion>4.20.70</MoqVersion>
+  </PropertyGroup>
+</Project>
