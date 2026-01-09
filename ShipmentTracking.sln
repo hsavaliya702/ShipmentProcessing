@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShipmentTracking.Common", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShipmentTracking.Subscriber", "src\ShipmentTracking.Subscriber\ShipmentTracking.Subscriber.csproj", "{75D87431-1D95-48A2-B2D0-90053D5790D4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShipmentTracking.WebhookProcessor", "src\ShipmentTracking.WebhookProcessor\ShipmentTracking.WebhookProcessor.csproj", "{E4449A69-89C8-4335-A9D2-EDF02C02FA28}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,9 +28,14 @@ Global
 		{75D87431-1D95-48A2-B2D0-90053D5790D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{75D87431-1D95-48A2-B2D0-90053D5790D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{75D87431-1D95-48A2-B2D0-90053D5790D4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E4449A69-89C8-4335-A9D2-EDF02C02FA28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E4449A69-89C8-4335-A9D2-EDF02C02FA28}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E4449A69-89C8-4335-A9D2-EDF02C02FA28}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E4449A69-89C8-4335-A9D2-EDF02C02FA28}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{4BC7BB72-9958-4F89-98B5-3F38F1A344E4} = {B07F7C98-1C22-4F66-9B8E-FCB34649DD9C}
 		{75D87431-1D95-48A2-B2D0-90053D5790D4} = {B07F7C98-1C22-4F66-9B8E-FCB34649DD9C}
+		{E4449A69-89C8-4335-A9D2-EDF02C02FA28} = {B07F7C98-1C22-4F66-9B8E-FCB34649DD9C}
 	EndGlobalSection
 EndGlobal
