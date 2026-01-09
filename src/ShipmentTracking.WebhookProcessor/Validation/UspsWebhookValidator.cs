@@ -18,17 +18,20 @@ public class UspsWebhookValidator : IWebhookValidator
     /// <inheritdoc/>
     public string CarrierCode => "USPS";
 
+    // Default timestamp skew: 5 minutes (configurable)
+    private const int DefaultTimestampSkewSeconds = 300;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="UspsWebhookValidator"/> class.
     /// </summary>
     public UspsWebhookValidator(
         SecretManager secretManager,
         ILogger<UspsWebhookValidator> logger,
-        int allowedTimestampSkewSeconds = 300) // Default 5 minutes
+        int? allowedTimestampSkewSeconds = null)
     {
         _secretManager = secretManager ?? throw new ArgumentNullException(nameof(secretManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _allowedTimestampSkewSeconds = allowedTimestampSkewSeconds;
+        _allowedTimestampSkewSeconds = allowedTimestampSkewSeconds ?? DefaultTimestampSkewSeconds;
     }
 
     /// <inheritdoc/>

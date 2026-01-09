@@ -99,11 +99,13 @@ public class SubscriptionRepository
                 Item = item,
                 // Only allow write if:
                 // 1. Record doesn't exist (attribute_not_exists), OR
-                // 2. Existing record is not Active
-                ConditionExpression = "attribute_not_exists(PK) OR SubscriptionStatus <> :active",
+                // 2. Existing record is not Active AND status is Pending or Failed
+                ConditionExpression = "attribute_not_exists(PK) OR (SubscriptionStatus <> :active AND (SubscriptionStatus = :pending OR SubscriptionStatus = :failed))",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
-                    [":active"] = new AttributeValue { S = SubscriptionStatus.Active.ToString() }
+                    [":active"] = new AttributeValue { S = SubscriptionStatus.Active.ToString() },
+                    [":pending"] = new AttributeValue { S = SubscriptionStatus.Pending.ToString() },
+                    [":failed"] = new AttributeValue { S = SubscriptionStatus.Failed.ToString() }
                 }
             };
 

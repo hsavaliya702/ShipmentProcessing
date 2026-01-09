@@ -136,28 +136,11 @@ public class StatusTranslationService
                 // Cancelled
                 ["CANCELLED"] = TrackingStatus.Cancelled,
                 ["VOIDED"] = TrackingStatus.Cancelled
-            },
-            
-            // Future: UPS mappings
-            ["UPS"] = new Dictionary<string, TrackingStatus>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["I"] = TrackingStatus.InTransit,
-                ["D"] = TrackingStatus.Delivered,
-                ["X"] = TrackingStatus.Exception,
-                ["P"] = TrackingStatus.AvailableForPickup,
-                ["M"] = TrackingStatus.PreTransit
-            },
-            
-            // Future: FedEx mappings
-            ["FEDEX"] = new Dictionary<string, TrackingStatus>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["OC"] = TrackingStatus.PreTransit,
-                ["IT"] = TrackingStatus.InTransit,
-                ["OD"] = TrackingStatus.OutForDelivery,
-                ["DL"] = TrackingStatus.Delivered,
-                ["DE"] = TrackingStatus.Exception,
-                ["HL"] = TrackingStatus.OnHold
             }
+            
+            // Future carriers will be added here when implementations are ready:
+            // ["UPS"] = new Dictionary<string, TrackingStatus>() { ... }
+            // ["FEDEX"] = new Dictionary<string, TrackingStatus>() { ... }
         };
     }
 
