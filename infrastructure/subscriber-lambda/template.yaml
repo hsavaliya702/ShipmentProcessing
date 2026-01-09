@@ -1,0 +1,210 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Shipment Tracking Subscriber Lambda - Subscribes to carrier tracking webhooks
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment name
+    AllowedValues:
+      - dev
+      - uat
+      - prod
+    Default: dev
+
+  DynamoDbTableName:
+    Type: String
+    Description: Name of the DynamoDB table for subscription records
+    Default: ShipmentTrackingSubscriptions
+
+  WebhookBaseUrl:
+    Type: String
+    Description: Base URL for carrier webhook callbacks
+    Default: https://tracking-webhook-dev.example.com
+
+  UspsApiBaseUrl:
+    Type: String
+    Description: USPS API base URL
+    Default: https://api.usps.com
+
+  LogRetentionDays:
+    Type: Number
+    Description: CloudWatch Logs retention period in days
+    Default: 30
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 512
+    Runtime: dotnet8
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        POWERTOOLS_SERVICE_NAME: shipment-tracking-subscriber
+        POWERTOOLS_LOG_LEVEL: INFO
+        ENVIRONMENT: !Ref Environment
+
+Resources:
+  # Lambda Function
+  SubscriberFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub shipment-tracking-subscriber-${Environment}
+      Description: Processes fulfillment order shipped events and subscribes to carrier webhooks
+      CodeUri: ../../src/ShipmentTracking.Subscriber/
+      Handler: ShipmentTracking.Subscriber::ShipmentTracking.Subscriber.Function::FunctionHandler
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoDbTableName
+          WEBHOOK_BASE_URL: !Ref WebhookBaseUrl
+          USPS_API_BASE_URL: !Ref UspsApiBaseUrl
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDbTableName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:carrier/*
+        - CloudWatchPutMetricPolicy: {}
+      Events:
+        SNSEvent:
+          Type: SNS
+          Properties:
+            Topic: !Ref InputSnsTopic
+            FilterPolicy:
+              eventType:
+                - fulfillment-order-shipped
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn: !GetAtt SubscriberDLQ.Arn
+      ReservedConcurrentExecutions: 100
+
+  # CloudWatch Logs
+  SubscriberLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/shipment-tracking-subscriber-${Environment}
+      RetentionInDays: !Ref LogRetentionDays
+
+  # SNS Topic for Input Events
+  InputSnsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub fulfillment-order-shipped-${Environment}
+      DisplayName: Fulfillment Order Shipped Events
+      KmsMasterKeyId: alias/aws/sns
+
+  # Dead Letter Queue
+  SubscriberDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub shipment-tracking-subscriber-dlq-${Environment}
+      MessageRetentionPeriod: 1209600  # 14 days
+      KmsMasterKeyId: alias/aws/sqs
+
+  # DLQ Alarm
+  DLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub shipment-tracking-subscriber-dlq-${Environment}
+      AlarmDescription: Alert when messages are sent to DLQ
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt SubscriberDLQ.QueueName
+
+  # Error Rate Alarm
+  ErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub shipment-tracking-subscriber-errors-${Environment}
+      AlarmDescription: Alert when Lambda error rate is high
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref SubscriberFunction
+
+  # Duration Alarm
+  DurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub shipment-tracking-subscriber-duration-${Environment}
+      AlarmDescription: Alert when Lambda duration is consistently high
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 50000  # 50 seconds
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref SubscriberFunction
+
+  # CloudWatch Dashboard
+  MonitoringDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub shipment-tracking-subscriber-${Environment}
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/Lambda", "Invocations", {"stat": "Sum", "label": "Invocations"}],
+                  [".", "Errors", {"stat": "Sum", "label": "Errors"}],
+                  [".", "Duration", {"stat": "Average", "label": "Avg Duration"}],
+                  [".", "ConcurrentExecutions", {"stat": "Maximum", "label": "Max Concurrent"}]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "Subscriber Lambda Metrics",
+                "dimensions": {
+                  "FunctionName": ["${SubscriberFunction}"]
+                }
+              }
+            }
+          ]
+        }
+
+Outputs:
+  SubscriberFunctionArn:
+    Description: Subscriber Lambda Function ARN
+    Value: !GetAtt SubscriberFunction.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-SubscriberFunctionArn
+
+  InputSnsTopicArn:
+    Description: SNS Topic ARN for input events
+    Value: !Ref InputSnsTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-InputSnsTopicArn
+
+  SubscriberDLQArn:
+    Description: Dead Letter Queue ARN
+    Value: !GetAtt SubscriberDLQ.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-SubscriberDLQArn
+
+  LogGroupName:
+    Description: CloudWatch Log Group Name
+    Value: !Ref SubscriberLogGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-LogGroupName

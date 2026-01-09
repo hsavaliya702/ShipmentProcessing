@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Shared DynamoDB table for shipment tracking subscriptions
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment name
+    AllowedValues:
+      - dev
+      - uat
+      - prod
+    Default: dev
+
+  TableName:
+    Type: String
+    Description: DynamoDB table name
+    Default: ShipmentTrackingSubscriptions
+
+  EnablePointInTimeRecovery:
+    Type: String
+    Description: Enable point-in-time recovery for the table
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'true'
+
+Resources:
+  ShipmentTrackingTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Ref TableName
+      BillingMode: PAY_PER_REQUEST  # On-demand capacity
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        Enabled: true
+        AttributeName: TTL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !Ref EnablePointInTimeRecovery
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: alias/aws/dynamodb
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ShipmentTracking
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # CloudWatch Alarms for DynamoDB
+  ReadThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${TableName}-read-throttle-${Environment}
+      AlarmDescription: Alert when read requests are throttled
+      MetricName: ReadThrottleEvents
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref ShipmentTrackingTable
+
+  WriteThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${TableName}-write-throttle-${Environment}
+      AlarmDescription: Alert when write requests are throttled
+      MetricName: WriteThrottleEvents
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref ShipmentTrackingTable
+
+  SystemErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${TableName}-system-errors-${Environment}
+      AlarmDescription: Alert when DynamoDB system errors occur
+      MetricName: SystemErrors
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref ShipmentTrackingTable
+
+Outputs:
+  TableName:
+    Description: DynamoDB table name
+    Value: !Ref ShipmentTrackingTable
+    Export:
+      Name: !Sub ${AWS::StackName}-TableName
+
+  TableArn:
+    Description: DynamoDB table ARN
+    Value: !GetAtt ShipmentTrackingTable.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-TableArn
+
+  TableStreamArn:
+    Description: DynamoDB table stream ARN
+    Value: !GetAtt ShipmentTrackingTable.StreamArn
+    Export:
+      Name: !Sub ${AWS::StackName}-TableStreamArn
