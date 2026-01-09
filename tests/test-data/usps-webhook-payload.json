@@ -1,0 +1,14 @@
+{
+  "trackingNumber": "9400116901490039382136",
+  "status": "Out for Delivery",
+  "statusCode": "04",
+  "statusCategory": "DELIVERY",
+  "statusSummary": "Out for Delivery",
+  "eventTimestamp": "2026-01-10T09:30:00Z",
+  "eventCity": "Springfield",
+  "eventState": "IL",
+  "eventZip": "62701",
+  "eventCountry": "US",
+  "estimatedDeliveryDate": "2026-01-10T17:00:00Z",
+  "facilityName": "SPRINGFIELD POST OFFICE"
+}

@@ -1,0 +1,252 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Shipment Tracking Webhook Processor Lambda - Receives and processes carrier webhook callbacks
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment name
+    AllowedValues:
+      - dev
+      - uat
+      - prod
+    Default: dev
+
+  DynamoDbTableName:
+    Type: String
+    Description: Name of the DynamoDB table for subscription records
+    Default: ShipmentTrackingSubscriptions
+
+  CustomDomainName:
+    Type: String
+    Description: Custom domain name for API Gateway (optional)
+    Default: ''
+
+  CertificateArn:
+    Type: String
+    Description: ACM certificate ARN for custom domain (required if CustomDomainName is set)
+    Default: ''
+
+  LogRetentionDays:
+    Type: Number
+    Description: CloudWatch Logs retention period in days
+    Default: 30
+
+Conditions:
+  HasCustomDomain: !Not [!Equals [!Ref CustomDomainName, '']]
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Runtime: dotnet8
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        POWERTOOLS_SERVICE_NAME: shipment-tracking-webhook-processor
+        POWERTOOLS_LOG_LEVEL: INFO
+        ENVIRONMENT: !Ref Environment
+
+Resources:
+  # Lambda Function
+  WebhookProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub shipment-tracking-webhook-processor-${Environment}
+      Description: Processes carrier webhook callbacks and publishes canonical tracking events
+      CodeUri: ../../src/ShipmentTracking.WebhookProcessor/
+      Handler: ShipmentTracking.WebhookProcessor::ShipmentTracking.WebhookProcessor.Function::FunctionHandler
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoDbTableName
+          SNS_TOPIC_ARN: !Ref OutputSnsTopic
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DynamoDbTableName
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt OutputSnsTopic.TopicName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:carrier/*/webhook-secret*
+        - CloudWatchPutMetricPolicy: {}
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /webhook/{carrier}
+            Method: POST
+            RestApiId: !Ref WebhookApi
+      ReservedConcurrentExecutions: 500
+
+  # API Gateway
+  WebhookApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub shipment-tracking-webhook-api-${Environment}
+      StageName: !Ref Environment
+      EndpointConfiguration:
+        Type: REGIONAL
+      Auth:
+        ApiKeyRequired: false  # Using signature validation instead
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiAccessLogGroup.Arn
+        Format: '$context.requestId $context.extendedRequestId $context.identity.sourceIp $context.requestTime $context.httpMethod $context.routeKey $context.status $context.protocol $context.responseLength'
+      TracingEnabled: true
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          LoggingLevel: INFO
+          DataTraceEnabled: true
+          MetricsEnabled: true
+
+  # Custom Domain (if specified)
+  CustomDomain:
+    Type: AWS::ApiGateway::DomainName
+    Condition: HasCustomDomain
+    Properties:
+      DomainName: !Ref CustomDomainName
+      RegionalCertificateArn: !Ref CertificateArn
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  BasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: HasCustomDomain
+    DependsOn: CustomDomain
+    Properties:
+      DomainName: !Ref CustomDomainName
+      RestApiId: !Ref WebhookApi
+      Stage: !Ref Environment
+
+  # SNS Topic for Output Events
+  OutputSnsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub shipment-tracking-status-events-${Environment}
+      DisplayName: Shipment Tracking Status Events
+      KmsMasterKeyId: alias/aws/sns
+
+  # CloudWatch Logs
+  WebhookProcessorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/shipment-tracking-webhook-processor-${Environment}
+      RetentionInDays: !Ref LogRetentionDays
+
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/shipment-tracking-webhook-api-${Environment}
+      RetentionInDays: !Ref LogRetentionDays
+
+  # CloudWatch Alarms
+  ErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub shipment-tracking-webhook-processor-errors-${Environment}
+      AlarmDescription: Alert when Lambda error rate is high
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 20
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref WebhookProcessorFunction
+
+  Api4xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub shipment-tracking-webhook-api-4xx-${Environment}
+      AlarmDescription: Alert when API 4xx error rate is high
+      MetricName: 4XXError
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 50
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ApiName
+          Value: !Sub shipment-tracking-webhook-api-${Environment}
+
+  Api5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub shipment-tracking-webhook-api-5xx-${Environment}
+      AlarmDescription: Alert when API 5xx error rate is high
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ApiName
+          Value: !Sub shipment-tracking-webhook-api-${Environment}
+
+  # CloudWatch Dashboard
+  MonitoringDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub shipment-tracking-webhook-processor-${Environment}
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/Lambda", "Invocations", {"stat": "Sum"}],
+                  [".", "Errors", {"stat": "Sum"}],
+                  [".", "Duration", {"stat": "Average"}],
+                  ["AWS/ApiGateway", "Count", {"stat": "Sum"}],
+                  [".", "4XXError", {"stat": "Sum"}],
+                  [".", "5XXError", {"stat": "Sum"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "title": "Webhook Processor Metrics"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  WebhookProcessorFunctionArn:
+    Description: Webhook Processor Lambda Function ARN
+    Value: !GetAtt WebhookProcessorFunction.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-WebhookProcessorFunctionArn
+
+  WebhookApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${WebhookApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/webhook
+    Export:
+      Name: !Sub ${AWS::StackName}-WebhookApiUrl
+
+  CustomDomainUrl:
+    Condition: HasCustomDomain
+    Description: Custom domain URL
+    Value: !Sub https://${CustomDomainName}/webhook
+    Export:
+      Name: !Sub ${AWS::StackName}-CustomDomainUrl
+
+  OutputSnsTopicArn:
+    Description: SNS Topic ARN for output events
+    Value: !Ref OutputSnsTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-OutputSnsTopicArn
+
+  LogGroupName:
+    Description: CloudWatch Log Group Name
+    Value: !Ref WebhookProcessorLogGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-LogGroupName
