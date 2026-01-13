@@ -1,0 +1,13 @@
+{
+  "listenerURL": "https://carriertracking.healthdyne.com/webhooks/usps",
+  "secret": "12345678901234567890123456789012",
+  "adminNotification": [
+    {
+      "email": "admin@healthdyne.com"
+    }
+  ],
+  "filterProperties": {
+    "trackingNumber": "9400111899562537883943",
+    "trackingEventTypes": ["ALL_UPDATES"]
+  }
+}

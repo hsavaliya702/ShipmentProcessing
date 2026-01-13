@@ -1,0 +1,6 @@
+{
+  "subscriptionId": "550e8400-e29b-41d4-a716-446655440000",
+  "subscriptionType": "TRACKING",
+  "timestamp": "2024-01-15T08:15:00Z",
+  "payload": "{\"trackingNumber\":\"9400111899562537883943\",\"statusCategory\":\"Out for Delivery\",\"statusSummary\":\"Your item is out for delivery on January 15, 2024 at 8:15 am in NEW YORK, NY 10001.\",\"mailClass\":\"Priority Mail\",\"serviceTypeCode\":\"PM\",\"destinationZIPCode\":\"10001\",\"trackingEvents\":[{\"eventCode\":\"02\",\"eventType\":\"Out for Delivery\",\"eventTimestamp\":\"2024-01-15T08:15:00-05:00\",\"eventCity\":\"NEW YORK\",\"eventState\":\"NY\",\"eventZIPCode\":\"10001\",\"eventCountry\":\"US\",\"facilityName\":\"NEW YORK NY POST OFFICE\",\"actionCode\":\"\",\"reasonCode\":\"\"}]}"
+}
