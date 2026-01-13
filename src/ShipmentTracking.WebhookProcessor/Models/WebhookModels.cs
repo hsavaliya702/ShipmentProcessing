@@ -111,48 +111,6 @@ public class EventLocation
 }
 
 /// <summary>
-/// USPS-specific webhook payload model.
-/// </summary>
-public class UspsWebhookPayload
-{
-    [JsonPropertyName("trackingNumber")]
-    public string TrackingNumber { get; set; } = string.Empty;
-
-    [JsonPropertyName("status")]
-    public string Status { get; set; } = string.Empty;
-
-    [JsonPropertyName("statusCode")]
-    public string StatusCode { get; set; } = string.Empty;
-
-    [JsonPropertyName("statusCategory")]
-    public string? StatusCategory { get; set; }
-
-    [JsonPropertyName("statusSummary")]
-    public string? StatusSummary { get; set; }
-
-    [JsonPropertyName("eventTimestamp")]
-    public string EventTimestamp { get; set; } = string.Empty;
-
-    [JsonPropertyName("eventCity")]
-    public string? EventCity { get; set; }
-
-    [JsonPropertyName("eventState")]
-    public string? EventState { get; set; }
-
-    [JsonPropertyName("eventZip")]
-    public string? EventZip { get; set; }
-
-    [JsonPropertyName("eventCountry")]
-    public string? EventCountry { get; set; }
-
-    [JsonPropertyName("estimatedDeliveryDate")]
-    public string? EstimatedDeliveryDate { get; set; }
-
-    [JsonPropertyName("facilityName")]
-    public string? FacilityName { get; set; }
-}
-
-/// <summary>
 /// Status translation mapping configuration.
 /// </summary>
 public class StatusMapping
