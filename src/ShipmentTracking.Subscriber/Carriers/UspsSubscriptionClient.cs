@@ -317,13 +317,6 @@ public class UspsSubscriptionClient : ICarrierSubscriptionClient
         return UspsTrackingPattern.IsMatch(trackingNumber.Trim());
     }
 
-    private async Task<UspsCredentials> GetUspsCredentialsAsync(CancellationToken cancellationToken)
-    {
-        return await _secretManager.GetSecretJsonAsync<UspsCredentials>(
-            "carrier/usps/credentials",
-            cancellationToken);
-    }
-
     /// <summary>
     /// Gets an OAuth access token for USPS API v3.
     /// Token is cached in Secrets Manager with expiration.
