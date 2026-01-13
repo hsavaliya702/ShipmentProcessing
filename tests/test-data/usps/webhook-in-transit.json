@@ -1,0 +1,6 @@
+{
+  "subscriptionId": "550e8400-e29b-41d4-a716-446655440000",
+  "subscriptionType": "TRACKING",
+  "timestamp": "2024-01-14T20:45:00Z",
+  "payload": "{\"trackingNumber\":\"9400111899562537883943\",\"statusCategory\":\"In Transit\",\"statusSummary\":\"Your item departed from our facility in PHILADELPHIA, PA on January 14, 2024 at 8:45 pm.\",\"mailClass\":\"Priority Mail\",\"serviceTypeCode\":\"PM\",\"destinationZIPCode\":\"10001\",\"trackingEvents\":[{\"eventCode\":\"08\",\"eventType\":\"Departed USPS Regional Facility\",\"eventTimestamp\":\"2024-01-14T20:45:00-05:00\",\"eventCity\":\"PHILADELPHIA\",\"eventState\":\"PA\",\"eventZIPCode\":\"19101\",\"eventCountry\":\"US\",\"facilityName\":\"PHILADELPHIA PA NETWORK DISTRIBUTION CENTER\",\"actionCode\":\"\",\"reasonCode\":\"\"}]}"
+}

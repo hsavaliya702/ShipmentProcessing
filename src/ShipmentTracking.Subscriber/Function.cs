@@ -203,7 +203,7 @@ public class Function
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(UspsSubscriptionClient)),
             sp.GetRequiredService<SecretManager>(),
             sp.GetRequiredService<ILogger<UspsSubscriptionClient>>(),
-            uspsApiBaseUrl));
+            configuration));
 
         // Carrier factory
         services.AddSingleton<CarrierSubscriptionClientFactory>();
